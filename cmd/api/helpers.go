@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -80,7 +81,16 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any
 		// instead.
 		case errors.Is(err, io.EOF):
 			return errors.New("body must not be empty")
-			// A json.InvalidUnmarshalError error will be returned if we pass something
+			// if the json contains unrecognised values then it'll throw an error with "json: unknown field "<field_name>""
+		case strings.HasPrefix(err.Error(), "json: unknown field"):
+			fieldName := strings.TrimPrefix(err.Error(), "json: unknown field")
+			return fmt.Errorf("body contains unknown key %s", fieldName)
+
+			// using the errors.As() function to check whether the error
+			// has the type *http.MaxBytesError to keep track of body that is larger than 1mb
+		case errors.As(err, &maxBytesError):
+			return fmt.Errorf("body must not be larger than %d bytes", maxBytesError.Limit)
+			// A json.InvalidUnmarshalError error will be returned if we pass something˝
 			// that is not a non-nil pointer to Decode(). We catch this and panic,
 			// rather than returning an error to our handler. At the end of this chapter
 			// we'll talk about panicking versus returning errors, and discuss why it's an
@@ -90,6 +100,15 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any
 		default:
 			return err
 		}
+	}
+
+	// call Decode() again using a pointer to an empty anonymous struct as the destination
+	// if the request body contained a single JSON value this will return an io.EOF error. if there's anything other than that error
+	// then we know the body has more than the required data.
+
+	err = dec.Decode(&struct{}{})
+	if !errors.Is(err, io.EOF) {
+		return errors.New("body must only contain a single JSON value")
 	}
 	return nil
 }
