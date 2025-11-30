@@ -92,6 +92,12 @@ func (m *Mailer) Send(recipient string, templateFile string, data any) error {
 	// and the AddAlternativeString() method to set the HTML body.
 	msg := mail.NewMsg()
 
+	err = msg.To(recipient)
+
+	if err != nil {
+		return err
+	}
+
 	err = msg.From(m.sender)
 
 	if err != nil {
