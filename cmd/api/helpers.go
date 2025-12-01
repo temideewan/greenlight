@@ -149,7 +149,9 @@ func (app *application) readInt(qs url.Values, key string, defaultValue int, v *
 
 func (app *application) background(fn func()) {
 	// launch goroutine in the background
+	app.wg.Add(1)
 	go func() {
+		defer app.wg.Done()
 		// clean up function to recover from a panic
 		defer func() {
 			if err := recover(); err != nil {
