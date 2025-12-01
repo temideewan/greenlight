@@ -124,7 +124,7 @@ func openDB(cfg config) (*sql.DB, error) {
 	// than or equal to 0 will mean that connections are not closed due to their idle time.
 	db.SetConnMaxIdleTime(cfg.db.maxIdleTime)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	err = db.PingContext(ctx)
