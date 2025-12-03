@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"time"
@@ -177,4 +178,16 @@ func (m UserModel) Update(user *User) error {
 		}
 	}
 	return nil
+}
+
+func (m UserModel) GetForToken(scope, plainTextToken string) (*User, error) {
+	user := &User{}
+	hash := sha256.Sum256([]byte(plainTextToken))
+	tokenHash := hash[:]
+	query := `
+	SELECT u.id, u.name, u.email, u.created_at, u.activated, u.version, u.password_hash FROM users u INNER JOIN
+	tokens t ON u.id = t.user_id
+	WHERE t.scope = $1 AND t.hash = $2 AND t.expiry > $3
+	`
+	return user, nil
 }
