@@ -181,13 +181,35 @@ func (m UserModel) Update(user *User) error {
 }
 
 func (m UserModel) GetForToken(scope, plainTextToken string) (*User, error) {
-	user := &User{}
 	hash := sha256.Sum256([]byte(plainTextToken))
-	tokenHash := hash[:]
 	query := `
 	SELECT u.id, u.name, u.email, u.created_at, u.activated, u.version, u.password_hash FROM users u INNER JOIN
 	tokens t ON u.id = t.user_id
 	WHERE t.scope = $1 AND t.hash = $2 AND t.expiry > $3
 	`
-	return user, nil
+	args := []any{scope, hash[:], time.Now()}
+	var user User
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := m.DB.QueryRowContext(ctx, query, args...).Scan(
+		&user.ID,
+		&user.Name,
+		&user.Email,
+		&user.CreatedAt,
+		&user.Activated,
+		&user.Version,
+		&user.Password.hash,
+	)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+	return &user, nil
 }

@@ -107,6 +107,7 @@ func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 		default:
 			app.serverErrorResponse(w, r, err)
 		}
+		return
 	}
 
 	// update the user activation status
